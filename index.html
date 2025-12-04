@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AeroLearn - Sistema de Aviação Civil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Marked for Markdown parsing in chat -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F0F4F8; }
+        
+        /* Animations */
+        .slide-enter { animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        .pulse-glow { animation: pulseGlow 2s infinite; }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+        /* Clean UI Utilities */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+        
+        .mastery-ring {
+            transition: stroke-dashoffset 0.5s ease-in-out;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        .interactive-item {
+            transition: all 0.2s;
+            cursor: pointer;
+            user-select: none;
+        }
+        .interactive-item:active { transform: scale(0.98); }
+        .selected-item { border-color: #3B82F6; background-color: #EFF6FF; }
+        .matched-item { border-color: #22C55E; background-color: #F0FDF4; opacity: 0.6; pointer-events: none; }
+
+        /* Chat Specific */
+        .typing-dot {
+            animation: typing 1.4s infinite ease-in-out both;
+            height: 6px; width: 6px; background-color: #94A3B8; border-radius: 50%; display: inline-block;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+        
+        .prose p { margin-bottom: 0.5em; }
+        .prose strong { color: #1e3a8a; font-weight: 700; }
+        .prose ul { list-style-type: disc; padding-left: 1.2em; margin-bottom: 0.5em; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-800">
+
+    <!-- Top Bar -->
+    <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 z-20 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 text-white p-2 rounded-lg">
+                <i class="ph-bold ph-airplane-tilt"></i>
+            </div>
+            <h1 class="font-bold text-lg tracking-tight text-slate-900">AeroLearn</h1>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <div class="hidden md:flex items-center gap-2 text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full">
+                <i class="ph-fill ph-fire text-orange-500"></i>
+                <span id="streak-display">3 Dias</span>
+            </div>
+            <div class="h-8 w-8 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold text-xs cursor-pointer hover:bg-slate-300 transition-colors" title="Perfil">
+                CM
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar Navigation -->
+        <nav class="w-64 bg-white border-r border-slate-200 flex-col hidden md:flex z-10">
+            <div class="p-4 space-y-2">
+                <button onclick="renderDashboard()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold bg-blue-50 text-blue-700">
+                    <i class="ph-bold ph-house"></i> Trilha de Voo
+                </button>
+                <button onclick="renderScenarioSimulator()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-purple-600 bg-purple-50 hover:bg-purple-100 transition-colors">
+                    <i class="ph-bold ph-magic-wand"></i> Simulador IA ✨
+                </button>
+                <button onclick="renderReviewMode()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                    <i class="ph-bold ph-barbell"></i> Revisão Rápida
+                </button>
+            </div>
+            
+            <div class="mt-auto p-6 border-t border-slate-100">
+                <div class="bg-indigo-900 rounded-2xl p-4 text-white relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10"><i class="ph-fill ph-airplane text-6xl"></i></div>
+                    <p class="text-xs font-medium text-indigo-300 mb-1">Status Atual</p>
+                    <p class="font-bold text-lg">Comissário Jr.</p>
+                    <div class="w-full bg-indigo-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                        <div class="bg-blue-400 h-full rounded-full" style="width: 35%"></div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Content Area -->
+        <main id="app-container" class="flex-1 overflow-y-auto relative bg-[#F8FAFC]">
+            <!-- Dynamic Content Injected Here -->
+        </main>
+
+        <!-- FAB for Chat -->
+        <button onclick="toggleChat()" class="fixed bottom-6 right-6 h-14 w-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 z-50 pulse-glow" title="Falar com Comandante IA">
+            <i class="ph-fill ph-sparkle text-2xl"></i>
+        </button>
+
+        <!-- Chat Widget -->
+        <div id="chat-widget" class="fixed bottom-24 right-6 w-96 h-[500px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col hidden transform transition-transform scale-95 opacity-0 z-50 overflow-hidden">
+            <!-- Header -->
+            <div class="bg-blue-600 p-4 flex justify-between items-center text-white">
+                <div class="flex items-center gap-3">
+                    <div class="h-8 w-8 bg-blue-500 rounded-full flex items-center justify-center">
+                        <i class="ph-fill ph-robot text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm">Comandante IA</h3>
+                        <p class="text-xs text-blue-200">Online • Gemini Powered</p>
+                    </div>
+                </div>
+                <button onclick="toggleChat()" class="hover:bg-blue-500 p-1 rounded"><i class="ph-bold ph-x"></i></button>
+            </div>
+            
+            <!-- Messages -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+                <div class="flex gap-3">
+                    <div class="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0 text-blue-600 font-bold text-xs">IA</div>
+                    <div class="bg-white p-3 rounded-2xl rounded-tl-none border border-slate-200 text-sm text-slate-700 shadow-sm">
+                        Olá, Cadete! Sou o seu instrutor virtual alimentado por Inteligência Artificial. <br><br>Tem alguma dúvida sobre RBACs, a história da aviação ou Convenções Internacionais? Pode perguntar!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input -->
+            <div class="p-3 bg-white border-t border-slate-200">
+                <div class="flex gap-2">
+                    <input type="text" id="chat-input" placeholder="Pergunte algo..." class="flex-1 border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-500" onkeypress="handleChatEnter(event)">
+                    <button onclick="sendMessage()" class="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 transition-colors">
+                        <i class="ph-bold ph-paper-plane-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Logic -->
+    <script>
+        // --- GEMINI API CONFIG ---
+        const apiKey = ""; // Set by environment
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+        async function callGemini(prompt, systemInstruction = "") {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined
+                    })
+                });
+
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } catch (error) {
+                console.error("Gemini Error:", error);
+                return "Desculpe, o sistema de comunicação com a IA está temporariamente indisponível. Tente novamente em alguns instantes.";
+            }
+        }
+
+        // --- CONTENT DATABASE ---
+        
+        const modules = [
+            { id: 1, title: "A Era dos Pioneiros", desc: "História e Evolução", icon: "ph-scroll", color: "text-amber-600", bg: "bg-amber-100", mastery: 0, topics: ["Mitologia", "Inventores", "Primeiras Cias", "Guerras Mundiais"] },
+            { id: 2, title: "A Ordem nos Céus", desc: "Tratados e Convenções", icon: "ph-gavel", color: "text-blue-600", bg: "bg-blue-100", mastery: 0, topics: ["Soberania", "Paris (1919)", "Varsóvia (1929)", "Chicago (1944)"] },
+            { id: 3, title: "As Regras Globais", desc: "OACI e Anexos", icon: "ph-globe", color: "text-cyan-600", bg: "bg-cyan-100", mastery: 0, topics: ["Estrutura OACI", "19 Anexos", "IATA", "Liberdades do Ar"] },
+            { id: 4, title: "O Sistema Brasileiro", desc: "SAC e Autoridades", icon: "ph-flag", color: "text-green-600", bg: "bg-green-100", mastery: 0, topics: ["ANAC", "CERNAI", "COMAER", "NURACs"] },
+            { id: 5, title: "Operações e RBACs", desc: "Regulamentos Práticos", icon: "ph-airplane-takeoff", color: "text-indigo-600", bg: "bg-indigo-100", mastery: 0, topics: ["RBAC 121/135", "Tipos de Empresa", "Handling", "Aerodesporto"] }
+        ];
+
+        // FULL 60 QUESTION BANK (Collapsed for brevity, logic handles array)
+        const questionBank = [
+             { id: 1, mod: 1, type: "mcq", q: "Qual foi a primeira menção histórica da relação da humanidade com o voo, citada no material?", options: ["14 Bis", "Lenda de Dédalo e Ícaro", "Balão de Montgolfier"], correct: 1, feedback: "Correto! A lenda grega de Dédalo e Ícaro é o registro mais antigo do desejo humano de voar, muito antes das máquinas." },
+            { id: 2, mod: 1, type: "tf", q: "Leonardo da Vinci, no séc. XV, projetou uma máquina capaz de voar carregando um ser humano, embora não a tenha construído em escala funcional.", correct: true, feedback: "Isso mesmo. Da Vinci foi o primeiro a se dedicar seriamente a projetar uma máquina em forma de pássaro." },
+            { id: 3, mod: 1, type: "assoc", q: "Associe o inventor ao seu feito:", pairs: [{left: "Bartolomeu de Gusmão", right: "Balão ar quente (1709)"}, {left: "Irmãos Montgolfier", right: "Voo humano (1783)"}, {left: "Santos Dumont", right: "Dirigível nº 6"}], feedback: "Perfeito. O Padre Bartolomeu (brasileiro) foi pioneiro em 1709, seguido pelos franceses Montgolfier e depois Dumont com a dirigibilidade." },
+            { id: 4, mod: 1, type: "mcq", q: "Qual foi a contribuição específica de Ferdinand Von Zeppelin para a aviação em 1900?", options: ["O primeiro avião", "O dirigível rígido para transporte", "O hidroavião"], correct: 1, feedback: "Exato! Zeppelin aperfeiçoou o dirigível rígido e iniciou a era do transporte de passageiros em larga escala." },
+            { id: 5, mod: 1, type: "ord", q: "Coloque as aeronaves de Santos Dumont na ordem cronológica de desenvolvimento:", items: ["Dirigível nº 6", "14 Bis", "Demoiselle"], correctOrder: [0, 1, 2], feedback: "Muito bem. Primeiro os dirigíveis (1901), depois o 14 Bis (1906) e por último o Demoiselle (1907)." },
+            { id: 6, mod: 1, type: "mcq", q: "Qual é a companhia aérea mais antiga do mundo ainda em atividade, fundada em 1919?", options: ["Avianca", "American Airlines", "KLM"], correct: 2, feedback: "Correto. A KLM (Holandesa) foi fundada em outubro de 1919. A Avianca é a segunda mais antiga (dezembro de 1919)." },
+            { id: 7, mod: 1, type: "gap", q: "A primeira companhia aérea das Américas foi a [GAP], fundada na Colômbia em 1919.", options: ["Avianca", "LATAM", "Delta"], correct: "Avianca", feedback: "Isso! A Avianca (originalmente SCADTA) foi fundada em Barranquilla e é a mais antiga das Américas." },
+            { id: 8, mod: 1, type: "mcq", q: "Qual evento histórico impulsionou a aviação devido ao uso de aviões como 'arma de grande poder ofensivo'?", options: ["Revolução Industrial", "I Guerra Mundial", "Guerra Fria"], correct: 1, feedback: "Certo. A I Guerra Mundial acelerou o desenvolvimento técnico, mas também criou a necessidade de regras no pós-guerra." },
+            { id: 9, mod: 1, type: "mcq", q: "Quem realizou o primeiro voo comercial da história (St. Petersburg - Tampa)?", options: ["Tony Jannus", "Charles Lindbergh", "Amélia Earhart"], correct: 0, feedback: "Correto. Tony Jannus pilotou o hidroavião em 1914, inaugurando a aviação comercial." },
+            { id: 10, mod: 1, type: "mcq", q: "Qual aeronave supersônica comercial operou a rota Rio-Paris, mas teve seus voos suspensos nos anos 2000?", options: ["Boeing 747", "Concorde", "Airbus A380"], correct: 1, feedback: "Exato. O Concorde (franco-britânico) voava a velocidades supersônicas, fazendo Rio-Paris em menos de 7 horas." },
+            { id: 11, mod: 2, type: "assoc", q: "Associe a Teoria de Soberania à sua origem:", pairs: [{left: "Inspiração Inglesa", right: "Soberania Total"}, {left: "Formação Francesa", right: "Céus Abertos"}], feedback: "Perfeito. Os ingleses defendiam que o país era dono do seu céu (soberania), enquanto os franceses queriam liberdade total." },
+            { id: 12, mod: 2, type: "mcq", q: "A Convenção de Paris (1919) criou a CINA. O que significava essa sigla?", options: ["Comissão Int. de Navegação Aérea", "Centro Int. de Naves Aéreas", "Comitê Interno de Aviação"], correct: 0, feedback: "Correto. A CINA foi a antecessora da OACI, criada para padronizar a tecnologia da época." },
+            { id: 13, mod: 2, type: "mcq", q: "Qual foi o foco principal da Convenção de Varsóvia (1929)?", options: ["Criar a ANAC", "Unificar regras de transporte (bilhetes/bagagens)", "Definir fronteiras"], correct: 1, feedback: "Isso. Varsóvia focou na responsabilidade civil: bilhetes, danos a passageiros e extravio de bagagem." },
+            { id: 14, mod: 2, type: "tf", q: "A Convenção de Chicago (1944) substituiu a Convenção de Paris e criou a OACI.", correct: true, feedback: "Correto. Chicago atualizou as regras e dissolveu a CINA para criar a OACI (Organização de Aviação Civil Internacional)." },
+            { id: 15, mod: 2, type: "mcq", q: "Segundo a Convenção de Chicago, a quem pertence a soberania do espaço aéreo?", options: ["À ONU", "É livre (ninguém é dono)", "Ao Estado subjacente"], correct: 2, feedback: "Exato. Consagrou-se a tese de que cada Estado tem soberania total e exclusiva sobre o ar acima de seu território." },
+            { id: 16, mod: 2, type: "mcq", q: "Qual documento se tornou obrigatório para o transporte aéreo internacional após a Convenção de Varsóvia?", options: ["Passaporte Diplomático", "Bilhete de Passagem", "Certificado de Vacina"], correct: 1, feedback: "Certo. Varsóvia tornou obrigatória a emissão do bilhete e da nota de bagagem pelo transportador." },
+            { id: 17, mod: 2, type: "mcq", q: "Quantos países participaram da assinatura da Convenção de Chicago em 1944?", options: ["32", "54", "193"], correct: 1, feedback: "Correto. Foram 54 países em 1944. Hoje a OACI tem cerca de 193 membros, mas a fundação foi com 54." },
+            { id: 18, mod: 2, type: "gap", q: "A Convenção de Paris ocorreu durante a conferência conhecida como 'Conferência da [GAP]'.", options: ["Guerra", "Paz", "Aviação"], correct: "Paz", feedback: "Isso. Foi durante a Conferência da Paz em Versalhes, pós-Primeira Guerra." },
+            { id: 19, mod: 2, type: "mcq", q: "Qual era o problema prático que exigia uma convenção internacional no pós-guerra?", options: ["Falta de pilotos", "Dificuldades linguísticas e falta de padronização", "Excesso de passageiros"], correct: 1, feedback: "Exato. Cada país usava uma língua e mapas diferentes, criando o caos e insegurança." },
+            { id: 20, mod: 2, type: "tf", q: "A Convenção de Chicago tratou apenas de aspectos técnicos, ignorando aspectos econômicos.", correct: false, feedback: "Correto (é falso). Ela tratou de ambos, mas teve sucesso imediato no técnico. O econômico exigiu acordos bilaterais posteriores." },
+            { id: 21, mod: 3, type: "mcq", q: "A OACI é uma agência especializada vinculada a qual organização global?", options: ["OTAN", "ONU", "Cruz Vermelha"], correct: 1, feedback: "Certo. A OACI (ICAO) faz parte do sistema das Nações Unidas." },
+            { id: 22, mod: 3, type: "assoc", q: "Diferencie os órgãos da OACI:", pairs: [{left: "Assembleia", right: "Poder máximo (todos os países)"}, {left: "Conselho", right: "Órgão executivo (36 países)"}], feedback: "Muito bem. A Assembleia reúne todos (193), enquanto o Conselho é um grupo menor eleito para executar as ações." },
+            { id: 23, mod: 3, type: "mcq", q: "De quanto em quanto tempo se reúne a Assembleia da OACI ordinariamente?", options: ["Anualmente", "A cada 3 anos", "A cada 5 anos"], correct: 1, feedback: "Correto. Eles definem as políticas para o triênio seguinte." },
+            { id: 24, mod: 3, type: "mcq", q: "Onde fica a sede permanente da OACI?", options: ["Paris", "Nova Iorque", "Montreal"], correct: 2, feedback: "Isso mesmo. A sede fica no Canadá (Montreal)." },
+            { id: 25, mod: 3, type: "mcq", q: "Para que servem os 'Anexos' da OACI?", options: ["Para cobrar multas", "Padronizar normas (SARPs)", "Registrar passageiros"], correct: 1, feedback: "Exato. Os Anexos são os manuais técnicos que garantem que a aviação seja igual em todo o mundo." },
+            { id: 26, mod: 3, type: "assoc", q: "Associe o Anexo ao seu tema:", pairs: [{left: "Anexo 1", right: "Licenças de Pessoal"}, {left: "Anexo 2", right: "Regras do Ar"}, {left: "Anexo 17", right: "Segurança (Security)"}], feedback: "Perfeito. Anexo 1 é sobre sua licença, o 2 sobre tráfego e o 17 sobre atos ilícitos (terrorismo)." },
+            { id: 27, mod: 3, type: "mcq", q: "Qual Anexo trata da 'Investigação de Acidentes e Incidentes'?", options: ["Anexo 13", "Anexo 18", "Anexo 9"], correct: 0, feedback: "Correto. O Anexo 13 dita como se investigam acidentes para prevenir novos." },
+            { id: 28, mod: 3, type: "mcq", q: "Se um país não pode cumprir uma norma da OACI, ele deve notificar uma:", options: ["Multa", "Diferença", "Exceção Temporária"], correct: 1, feedback: "Isso. Chama-se 'Diferença Notificada', para que todos saibam que ali a regra é diferente." },
+            { id: 29, mod: 3, type: "mcq", q: "Qual o objetivo principal do Anexo 18?", options: ["Transporte de Cargas Perigosas", "Ruído de Aeronaves", "Meteorologia"], correct: 0, feedback: "Certo. Ele regula o transporte seguro de itens perigosos (Dangerous Goods)." },
+            { id: 30, mod: 3, type: "mcq", q: "Qual organização representa as COMPANHIAS AÉREAS (empresas) e não os governos?", options: ["OACI", "IATA", "ANAC"], correct: 1, feedback: "Correto. A IATA é uma associação de empresas (privada), a OACI é de governos (ONU)." },
+            { id: 31, mod: 3, type: "tf", q: "A CLAC (Comissão Latino-Americana) é um órgão consultivo regional.", correct: true, feedback: "Exato. A CLAC reúne autoridades da América Latina e Caribe para coordenar interesses regionais." },
+            { id: 32, mod: 3, type: "mcq", q: "Qual é a principal função da ALTA?", options: ["Fiscalizar pilotos", "Coordenar empresas na América Latina", "Fabricar aviões"], correct: 1, feedback: "Isso. ALTA foca nas empresas aéreas da região latino-americana e caribenha." },
+            { id: 33, mod: 3, type: "mcq", q: "Quantas 'Liberdades do Ar' (direitos comerciais) existem atualmente?", options: ["5", "9", "12"], correct: 1, feedback: "Correto. Começaram com 5 em Chicago, mas evoluíram para 9 liberdades comerciais." },
+            { id: 34, mod: 3, type: "mcq", q: "O que é a 'Primeira Liberdade do Ar'?", options: ["Direito de pousar para abastecer", "Direito de Sobrevoo (sem pousar)", "Direito de cabotagem"], correct: 1, feedback: "Certo. É o direito básico de cruzar o céu de um país sem tocar o solo." },
+            { id: 35, mod: 3, type: "mcq", q: "O que caracteriza a 'Cabotagem' (8ª e 9ª liberdades)?", options: ["Voo internacional longo", "Transporte entre dois pontos no mesmo país estrangeiro", "Voo de carga"], correct: 1, feedback: "Exato. É quando uma empresa estrangeira faz um voo doméstico em outro país (ex: Air France fazendo Rio-SP)." },
+            { id: 36, mod: 4, type: "mcq", q: "Qual é a autoridade máxima da Aviação Civil no Brasil hoje?", options: ["DAC", "ANAC", "INFRAERO"], correct: 1, feedback: "Correto. A ANAC substituiu o DAC em 2005 como autoridade reguladora." },
+            { id: 37, mod: 4, type: "assoc", q: "Associe o órgão à sua função no Brasil:", pairs: [{left: "ANAC", right: "Regular e Fiscalizar (Civil)"}, {left: "DECEA", right: "Controle do Espaço Aéreo"}, {left: "CERNAI", right: "Estudos/Acordos Internacionais"}], feedback: "Muito bem. A ANAC cuida das regras civis, o DECEA/COMAER do espaço aéreo e a CERNAI da diplomacia técnica." },
+            { id: 38, mod: 4, type: "mcq", q: "Em que ano a ANAC foi efetivamente criada (Lei 11.182)?", options: ["1999", "2005", "2010"], correct: 1, feedback: "Certo. Foi criada em 2005 e começou a atuar em 2006, substituindo o DAC." },
+            { id: 39, mod: 4, type: "tf", q: "O antigo DAC (Departamento de Aviação Civil) era subordinado diretamente ao Ministério da Aeronáutica (militares).", correct: true, feedback: "Isso. Antes da ANAC, a aviação civil era controlada pelos militares através do DAC." },
+            { id: 40, mod: 4, type: "mcq", q: "Qual é a função da CERNAI?", options: ["Vender passagens", "Assessorar em acordos internacionais", "Fiscalizar bagagens"], correct: 1, feedback: "Exato. A CERNAI estuda convenções e tratados para orientar o governo brasileiro." },
+            { id: 41, mod: 4, type: "gap", q: "Os órgãos regionais da ANAC que executam atividades locais são chamados de [GAP].", options: ["NURAC", "SERAC", "GER"], correct: "NURAC", feedback: "Correto. NURAC significa Núcleo Regional de Aviação Civil." },
+            { id: 42, mod: 4, type: "mcq", q: "Quantos NURACs existem listados no material?", options: ["5", "9", "27"], correct: 1, feedback: "Certo. São 9 núcleos espalhados pelas principais capitais e centros (ex: MAO, BHZ, POA)." },
+            { id: 43, mod: 4, type: "mcq", q: "Onde fica a Representação Regional da ANAC responsável pela certificação de produtos (em conjunto com o DCTA)?", options: ["Rio de Janeiro", "São José dos Campos", "Brasília"], correct: 1, feedback: "Isso. Fica no polo tecnológico de SP, próximo à Embraer." },
+            { id: 44, mod: 4, type: "mcq", q: "Qual é a 'Missão Síntese' do Comando da Aeronáutica?", options: ["Lucrar com passagens", "Manter a soberania do espaço aéreo", "Treinar comissários"], correct: 1, feedback: "Exato. A missão é a defesa da pátria através do controle do espaço aéreo." },
+            { id: 45, mod: 4, type: "tf", q: "A ANAC possui independência administrativa e financeira (autarquia especial).", correct: true, feedback: "Correto. Diferente do antigo DAC, a ANAC tem autonomia de gestão." },
+            { id: 46, mod: 4, type: "mcq", q: "Qual Superintendência da ANAC cuida de Padrões Operacionais?", options: ["SPO", "SGP", "SAF"], correct: 0, feedback: "Certo. SPO = Superintendência de Padrões Operacionais." },
+            { id: 47, mod: 4, type: "mcq", q: "Onde fica a Sede administrativa da ANAC?", options: ["Rio de Janeiro", "São Paulo", "Brasília"], correct: 2, feedback: "Correto. A sede fica na capital federal." },
+            { id: 48, mod: 4, type: "mcq", q: "O 'Correio Aéreo Nacional' (CAN) é operado por quem?", options: ["Correios (ECT)", "Força Aérea Brasileira", "Latam Cargo"], correct: 1, feedback: "Isso. É uma atribuição subsidiária da FAB, integrando o país." },
+            { id: 49, mod: 4, type: "mcq", q: "Quem é o profissional da ANAC credenciado para fiscalizar operações de voo (fiscais)?", options: ["INSPAC", "Delegado", "Auditor Fiscal"], correct: 0, feedback: "Exato. Inspetor de Aviação Civil." },
+            { id: 50, mod: 4, type: "mcq", q: "Um INSPAC da área de Operações pode viajar na cabine de comando?", options: ["Nunca", "Sim, para fiscalização", "Apenas se pagar bilhete"], correct: 1, feedback: "Correto. Eles têm autoridade para fiscalizar in loco a segurança de voo." },
+            { id: 51, mod: 5, type: "mcq", q: "Qual RBAC regula as grandes companhias aéreas (Transporte Regular > 19 assentos)?", options: ["RBAC 135", "RBAC 121", "RBAC 91"], correct: 1, feedback: "Atenção! RBAC 121 é para as grandes (Gol, Latam, Azul). O 135 é para Táxi Aéreo." },
+            { id: 52, mod: 5, type: "mcq", q: "O que define uma empresa de 'Táxi Aéreo' (RBAC 135)?", options: ["Voos com horário fixo", "Voos sob demanda", "Voos agrícolas"], correct: 1, feedback: "Isso. Táxi Aéreo não tem 'linha', ele voa quando o cliente contrata." },
+            { id: 53, mod: 5, type: "assoc", q: "Associe o RBAC ao tipo de empresa:", pairs: [{left: "RBAC 129", right: "Empresas Estrangeiras"}, {left: "RBAC 141", right: "Centros de Instrução (Escolas)"}], feedback: "Perfeito. Estrangeiras seguem o 129 e Escolas de Aviação o 141." },
+            { id: 54, mod: 5, type: "mcq", q: "O que é um 'Serviço Aéreo Especializado'?", options: ["Transporte de passageiros VIP", "Aerofotografia, agrotóxicos, etc", "Voo internacional"], correct: 1, feedback: "Correto. São serviços técnicos que não visam o transporte de pessoas/carga de um ponto a outro." },
+            { id: 55, mod: 5, type: "mcq", q: "Empresas de 'Handling' (Serviços Auxiliares) fazem o quê?", options: ["Pilotam o avião", "Apoio de solo (limpeza, check-in)", "Controle de tráfego"], correct: 1, feedback: "Exato. Elas dão o suporte logístico para o avião operar." },
+            { id: 56, mod: 5, type: "mcq", q: "Qual a diferença entre CIAC e CTAC?", options: ["Não há diferença", "CIAC forma (escola), CTAC treina (simuladores)", "CIAC é militar"], correct: 1, feedback: "Muito bem. CIAC (RBAC 141) é a escola básica; CTAC (RBAC 142) é centro de treinamento avançado." },
+            { id: 57, mod: 5, type: "mcq", q: "As empresas estrangeiras 'Off-line' são aquelas que:", options: ["Voam sem internet", "Vendem bilhetes no BR, mas operam fora", "Estão falidas"], correct: 1, feedback: "Isso. Elas têm escritório aqui para vender, mas seus aviões não pousam aqui (ex: Finnair)." },
+            { id: 58, mod: 5, type: "mcq", q: "Aeromodelismo, Balonismo e Paraquedismo são considerados aviação:", options: ["Comercial", "Aerodesportiva", "Militar"], correct: 1, feedback: "Correto. São atividades recreativas reguladas para garantir a segurança de terceiros." },
+            { id: 59, mod: 5, type: "gap", q: "O transporte aéreo no Brasil é um [GAP] do Estado (União).", options: ["Comércio livre", "Monopólio", "Hobby"], correct: "Monopólio", feedback: "Certo. A Constituição define que compete à União explorar a navegação aérea (diretamente ou por concessão)." },
+            { id: 60, mod: 5, type: "mcq", q: "Qual é a capacidade de carga limite para ser considerado Táxi Aéreo (RBAC 135)?", options: ["Até 3.400 kg (ou 19 assentos)", "Até 10.000 kg", "Qualquer peso"], correct: 0, feedback: "Exato. Acima disso ou mais de 19 assentos, cai na regra mais rígida (RBAC 121)." }
+        ];
+
+        // --- APP STATE ---
+        let currentModuleId = null;
+        let sessionQueue = [];
+        let currentQuestionIndex = 0;
+        let isReviewing = false;
+        
+        // --- CORE FUNCTIONS ---
+
+        function init() {
+            renderDashboard();
+        }
+
+        // 1. DASHBOARD RENDERER
+        function renderDashboard() {
+            const container = document.getElementById('app-container');
+            
+            let modulesHTML = modules.map(mod => {
+                const progress = Math.min(mod.mastery, 100);
+                
+                return `
+                <div onclick="startModule(${mod.id})" class="glass-card rounded-2xl p-6 cursor-pointer group hover:border-blue-300 transition-all relative overflow-hidden">
+                    <div class="${mod.bg} w-24 h-24 rounded-full absolute -top-4 -right-4 opacity-50 group-hover:scale-110 transition-transform"></div>
+                    
+                    <div class="flex items-start justify-between relative z-10">
+                        <div class="${mod.color} bg-white p-3 rounded-xl shadow-sm">
+                            <i class="ph-fill ${mod.icon} text-2xl"></i>
+                        </div>
+                        
+                        <!-- Circular Progress -->
+                        <div class="relative w-12 h-12 flex items-center justify-center">
+                            <svg class="w-full h-full transform -rotate-90">
+                                <circle cx="24" cy="24" r="18" stroke="#E2E8F0" stroke-width="4" fill="transparent" />
+                                <circle cx="24" cy="24" r="18" stroke="${progress > 0 ? 'currentColor' : 'transparent'}" stroke-width="4" fill="transparent" 
+                                    class="${mod.color} mastery-ring" 
+                                    stroke-dasharray="113" 
+                                    stroke-dashoffset="${113 - (113 * progress / 100)}" />
+                            </svg>
+                            <span class="absolute text-[10px] font-bold text-slate-500">${progress}%</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 relative z-10">
+                        <h3 class="font-bold text-slate-800 text-lg group-hover:text-blue-600 transition-colors">${mod.title}</h3>
+                        <p class="text-sm text-slate-500 font-medium mb-3">${mod.desc}</p>
+                        
+                        <div class="flex flex-wrap gap-2">
+                            ${mod.topics.slice(0, 2).map(t => `<span class="text-[10px] uppercase tracking-wider bg-slate-100 text-slate-500 px-2 py-1 rounded-md border border-slate-200">${t}</span>`).join('')}
+                            ${mod.topics.length > 2 ? `<span class="text-[10px] text-slate-400 px-1 py-1">+${mod.topics.length - 2}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <div class="max-w-5xl mx-auto p-6 md:p-10 slide-enter">
+                    <header class="mb-10">
+                        <h2 class="text-3xl font-bold text-slate-900 mb-2">Trilha de Aprendizado</h2>
+                        <p class="text-slate-500">Selecione um módulo para começar seus exercícios diários.</p>
+                    </header>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        ${modulesHTML}
+                        
+                        <!-- AI Simulator Card -->
+                        <div onclick="renderScenarioSimulator()" class="glass-card rounded-2xl p-6 cursor-pointer group hover:border-purple-300 transition-all relative overflow-hidden ring-2 ring-purple-100">
+                             <div class="bg-purple-100 w-24 h-24 rounded-full absolute -top-4 -right-4 opacity-50 group-hover:scale-110 transition-transform"></div>
+                             <div class="relative z-10">
+                                <div class="text-purple-600 bg-white p-3 rounded-xl shadow-sm inline-block mb-4">
+                                    <i class="ph-fill ph-magic-wand text-2xl"></i>
+                                </div>
+                                <h3 class="font-bold text-slate-800 text-lg group-hover:text-purple-600 transition-colors flex items-center gap-2">Simulador IA <i class="ph-fill ph-sparkle text-yellow-400"></i></h3>
+                                <p class="text-sm text-slate-500 font-medium mb-3">Gerador infinito de situações práticas para teste de conhecimento.</p>
+                                <span class="text-[10px] uppercase tracking-wider bg-purple-50 text-purple-600 px-2 py-1 rounded-md border border-purple-200">Experimental</span>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-12 bg-blue-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-blue-200">
+                        <div class="relative z-10 max-w-lg">
+                            <h3 class="text-2xl font-bold mb-2">Pronto para o Exame ANAC?</h3>
+                            <p class="text-blue-100 mb-6">Teste seus conhecimentos com questões misturadas de todos os módulos.</p>
+                            <button onclick="startMixedPractice()" class="bg-white text-blue-700 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-lg inline-flex items-center gap-2">
+                                <i class="ph-bold ph-play"></i> Simulado Geral
+                            </button>
+                        </div>
+                        <i class="ph-fill ph-airplane-tilt absolute -bottom-10 -right-10 text-9xl text-blue-500 opacity-50"></i>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // --- CHAT FUNCTIONS ---
+        
+        function toggleChat() {
+            const chatWidget = document.getElementById('chat-widget');
+            if (chatWidget.classList.contains('hidden')) {
+                chatWidget.classList.remove('hidden');
+                setTimeout(() => {
+                    chatWidget.classList.remove('transform', 'scale-95', 'opacity-0');
+                }, 10);
+                // Scroll to bottom
+                const msgs = document.getElementById('chat-messages');
+                msgs.scrollTop = msgs.scrollHeight;
+            } else {
+                chatWidget.classList.add('transform', 'scale-95', 'opacity-0');
+                setTimeout(() => {
+                    chatWidget.classList.add('hidden');
+                }, 200);
+            }
+        }
+        
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+            
+            const msgs = document.getElementById('chat-messages');
+            
+            // Add user message
+            msgs.innerHTML += `
+                <div class="flex gap-3 flex-row-reverse">
+                    <div class="h-8 w-8 bg-slate-200 rounded-full flex items-center justify-center shrink-0 text-slate-600 font-bold text-xs">VC</div>
+                    <div class="bg-blue-600 p-3 rounded-2xl rounded-tr-none text-sm text-white shadow-sm">
+                        ${msg}
+                    </div>
+                </div>
+            `;
+            
+            input.value = "";
+            msgs.scrollTop = msgs.scrollHeight;
+            
+            // Add Loading Indicator
+            const loadingId = 'loading-' + Date.now();
+            msgs.innerHTML += `
+                <div id="${loadingId}" class="flex gap-3">
+                    <div class="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0 text-blue-600 font-bold text-xs">IA</div>
+                    <div class="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-200 text-sm text-slate-700 shadow-sm flex items-center gap-1">
+                        <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            msgs.scrollTop = msgs.scrollHeight;
+            
+            // Call Gemini
+            const systemPrompt = "Você é o 'Comandante IA', um instrutor de aviação especialista em aviação civil brasileira (ANAC), regulamentos (RBACs) e convenções internacionais (OACI). Responda de forma didática, encorajadora e técnica, mas acessível para estudantes de comissário de voo. Use formatação Markdown (negrito para termos chave).";
+            const response = await callGemini(msg, systemPrompt);
+            
+            // Remove Loading
+            document.getElementById(loadingId).remove();
+            
+            // Add AI Message with Markdown parsing
+            msgs.innerHTML += `
+                <div class="flex gap-3 slide-enter">
+                    <div class="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0 text-blue-600 font-bold text-xs">IA</div>
+                    <div class="bg-white p-3 rounded-2xl rounded-tl-none border border-slate-200 text-sm text-slate-700 shadow-sm prose prose-sm max-w-none">
+                        ${marked.parse(response)}
+                    </div>
+                </div>
+            `;
+            msgs.scrollTop = msgs.scrollHeight;
+        }
+
+        function handleChatEnter(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        // --- SCENARIO SIMULATOR FUNCTIONS ---
+
+        async function renderScenarioSimulator() {
+            const container = document.getElementById('app-container');
+            
+            container.innerHTML = `
+                <div class="max-w-3xl mx-auto p-6 md:p-10 slide-enter">
+                    <div class="flex items-center gap-4 mb-6">
+                         <button onclick="renderDashboard()" class="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
+                            <i class="ph-bold ph-arrow-left"></i>
+                        </button>
+                        <h2 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                            Simulador de Cenários IA <i class="ph-fill ph-sparkle text-purple-500"></i>
+                        </h2>
+                    </div>
+
+                    <div id="scenario-container" class="bg-white rounded-3xl p-8 shadow-xl border border-purple-100 min-h-[400px] flex flex-col relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500"></div>
+                        
+                        <div class="flex-1 flex flex-col items-center justify-center text-center space-y-6" id="scenario-intro">
+                            <div class="h-20 w-20 bg-purple-50 rounded-full flex items-center justify-center mb-2">
+                                <i class="ph-duotone ph-brain text-4xl text-purple-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-800">Gerador de Situações Práticas</h3>
+                            <p class="text-slate-500 max-w-md">A Inteligência Artificial irá gerar uma situação hipotética envolvendo regras da aviação. Seu objetivo é identificar a regulamentação correta ou o procedimento adequado.</p>
+                            <button onclick="generateScenario()" class="bg-purple-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-purple-700 transition-all shadow-lg shadow-purple-200 flex items-center gap-2">
+                                <i class="ph-bold ph-play"></i> Gerar Cenário
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        let currentScenario = "";
+
+        async function generateScenario() {
+            const container = document.getElementById('scenario-container');
+            
+            // Loading State
+            container.innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center text-center">
+                    <div class="h-12 w-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mb-4"></div>
+                    <p class="text-purple-600 font-medium animate-pulse">Consultando a torre de controle...</p>
+                </div>
+            `;
+
+            // Prompt Gemini
+            const prompt = "Gere uma situação problema curta e prática (3-4 linhas) envolvendo aviação civil (pode ser sobre RBACs, Atos Ilícitos, transporte de carga, direitos do passageiro ou soberania). Não dê a resposta. Termine com a pergunta: 'Qual é o procedimento correto?' ou 'Qual regra se aplica?'";
+            currentScenario = await callGemini(prompt);
+
+            // Render Scenario
+            container.innerHTML = `
+                <div class="fade-in flex flex-col h-full">
+                    <div class="bg-purple-50 rounded-2xl p-6 mb-6 border border-purple-100">
+                        <div class="flex items-center gap-2 mb-2 text-purple-700 font-bold uppercase text-xs tracking-wider">
+                            <i class="ph-fill ph-warning-circle"></i> Situação
+                        </div>
+                        <p class="text-slate-800 text-lg leading-relaxed font-medium">${currentScenario}</p>
+                    </div>
+
+                    <div class="flex-1 flex flex-col">
+                        <label class="block text-sm font-bold text-slate-600 mb-2">Sua Resposta:</label>
+                        <textarea id="scenario-answer" class="w-full flex-1 border border-slate-300 rounded-xl p-4 focus:outline-none focus:border-purple-500 resize-none text-slate-700" placeholder="Descreva qual regra se aplica ou o procedimento correto..."></textarea>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button onclick="evaluateAnswer()" class="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-800 transition-colors flex items-center gap-2">
+                            Avaliar Resposta <i class="ph-bold ph-check"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function evaluateAnswer() {
+            const userAnswer = document.getElementById('scenario-answer').value;
+            if (!userAnswer.trim()) return;
+
+            const container = document.getElementById('scenario-container');
+            const originalContent = container.innerHTML;
+
+            // Loading Overlay
+            container.innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center text-center">
+                    <div class="h-12 w-12 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mb-4"></div>
+                    <p class="text-green-600 font-medium animate-pulse">Analisando resposta...</p>
+                </div>
+            `;
+
+            const prompt = `Cenário: "${currentScenario}". Resposta do aluno: "${userAnswer}". Avalie se a resposta está correta com base na regulamentação brasileira (ANAC) ou internacional (OACI). Se estiver errada, explique o correto gentilmente. Se estiver certa, parabenize. Seja conciso.`;
+            const feedback = await callGemini(prompt);
+
+            container.innerHTML = `
+                <div class="fade-in flex flex-col h-full overflow-y-auto">
+                    <div class="flex items-start gap-4 mb-6">
+                         <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center shrink-0 text-green-600">
+                            <i class="ph-fill ph-chalkboard-teacher text-xl"></i>
+                         </div>
+                         <div class="prose prose-sm max-w-none text-slate-700">
+                            ${marked.parse(feedback)}
+                         </div>
+                    </div>
+
+                    <div class="mt-auto pt-6 border-t border-slate-100 flex gap-4">
+                        <button onclick="renderDashboard()" class="flex-1 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-50 border border-slate-200 transition-colors">
+                            Voltar
+                        </button>
+                        <button onclick="generateScenario()" class="flex-1 py-3 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-md transition-colors">
+                            Novo Cenário
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- EXISTING SESSION LOGIC (Start Module, etc) ---
+        function startModule(moduleId) {
+            currentModuleId = moduleId;
+            const moduleQuestions = questionBank.filter(q => q.mod === moduleId);
+            if (moduleQuestions.length === 0) { alert("Em breve! Módulo em construção."); return; }
+            sessionQueue = shuffleArray(moduleQuestions).slice(0, 10);
+            currentQuestionIndex = 0;
+            renderSession();
+        }
+
+        function startMixedPractice() {
+            currentModuleId = 'mixed';
+            sessionQueue = shuffleArray(questionBank).slice(0, 15);
+            currentQuestionIndex = 0;
+            renderSession();
+        }
+
+        function renderSession() {
+            if (currentQuestionIndex >= sessionQueue.length) { renderCompletion(); return; }
+            const q = sessionQueue[currentQuestionIndex];
+            const container = document.getElementById('app-container');
+            const progressPct = ((currentQuestionIndex) / sessionQueue.length) * 100;
+
+            let questionHTML = '';
+            if (q.type === 'mcq') questionHTML = renderMCQ(q);
+            else if (q.type === 'tf') questionHTML = renderTF(q);
+            else if (q.type === 'assoc') questionHTML = renderAssoc(q);
+            else if (q.type === 'ord') questionHTML = renderOrd(q);
+            else if (q.type === 'gap') questionHTML = renderGap(q);
+
+            container.innerHTML = `
+                <div class="h-full flex flex-col max-w-3xl mx-auto p-6 md:p-10 fade-in">
+                    <div class="flex items-center gap-4 mb-8">
+                        <button onclick="renderDashboard()" class="text-slate-400 hover:text-slate-600 transition-colors"><i class="ph-bold ph-x text-xl"></i></button>
+                        <div class="flex-1 h-3 bg-slate-200 rounded-full overflow-hidden"><div class="h-full bg-green-500 transition-all duration-500 rounded-full" style="width: ${progressPct}%"></div></div>
+                        <span class="text-sm font-bold text-slate-400">${currentQuestionIndex + 1}/${sessionQueue.length}</span>
+                    </div>
+                    <div class="flex-1 flex flex-col justify-center pb-20">
+                        <h2 class="text-2xl md:text-3xl font-bold text-slate-800 mb-8 leading-tight">${q.q.replace('[GAP]', '<span class="border-b-4 border-slate-300 px-4 inline-block mx-1"></span>')}</h2>
+                        <div id="interaction-area" class="w-full">${questionHTML}</div>
+                    </div>
+                    <div id="feedback-sheet" class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 p-6 transform translate-y-full transition-transform z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+                        <div class="max-w-3xl mx-auto flex gap-4">
+                            <div id="feedback-icon" class="hidden md:flex h-12 w-12 rounded-full items-center justify-center text-2xl shrink-0"></div>
+                            <div class="flex-1">
+                                <h4 id="feedback-title" class="font-bold text-lg mb-1"></h4>
+                                <div id="feedback-text" class="text-slate-600 mb-2"></div>
+                                <div class="flex items-start gap-2 bg-blue-50 p-3 rounded-lg text-sm text-blue-800"><span class="text-xl">🦉</span><span id="owl-explanation"></span></div>
+                            </div>
+                            <button id="next-btn" class="h-12 px-8 rounded-xl font-bold text-white shadow-lg transition-transform active:scale-95 whitespace-nowrap self-end md:self-auto">Continuar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            if (q.type === 'assoc') initAssocLogic(q);
+            if (q.type === 'ord') initOrdLogic(q);
+        }
+
+        // --- QUESTION RENDERERS & LOGIC (Condensed for implementation) ---
+        function renderMCQ(q) { return `<div class="grid gap-3">${q.options.map((opt, i) => `<button onclick="handleAnswer('mcq', ${i})" class="option-btn w-full text-left p-5 rounded-2xl border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all font-medium text-lg text-slate-700 flex items-center gap-3"><div class="h-8 w-8 rounded-lg border-2 border-slate-300 flex items-center justify-center text-sm font-bold text-slate-400 group-hover:border-blue-400 group-hover:text-blue-50">${String.fromCharCode(65 + i)}</div>${opt}</button>`).join('')}</div>`; }
+        function renderTF(q) { return `<div class="grid grid-cols-2 gap-4"><button onclick="handleAnswer('tf', true)" class="h-32 rounded-2xl border-2 border-slate-200 hover:border-blue-400 hover:bg-blue-50 flex flex-col items-center justify-center gap-2 transition-all"><i class="ph-fill ph-check-circle text-4xl text-green-500"></i><span class="font-bold text-lg">Verdadeiro</span></button><button onclick="handleAnswer('tf', false)" class="h-32 rounded-2xl border-2 border-slate-200 hover:border-red-400 hover:bg-red-50 flex flex-col items-center justify-center gap-2 transition-all"><i class="ph-fill ph-x-circle text-4xl text-red-500"></i><span class="font-bold text-lg">Falso</span></button></div>`; }
+        function renderGap(q) { return `<div class="flex flex-wrap gap-3 justify-center mt-8">${q.options.map((opt) => `<button onclick="handleAnswer('gap', '${opt}')" class="px-6 py-3 rounded-xl bg-white border-2 border-slate-200 shadow-sm hover:border-blue-500 hover:text-blue-600 font-bold text-lg transition-all transform hover:-translate-y-1">${opt}</button>`).join('')}</div>`; }
+        function renderAssoc(q) { 
+            const lefts = q.pairs.map((p, i) => ({txt: p.left, id: i})).sort(() => Math.random() - 0.5);
+            const rights = q.pairs.map((p, i) => ({txt: p.right, id: i})).sort(() => Math.random() - 0.5);
+            return `<div class="grid grid-cols-2 gap-8" id="assoc-container"><div class="space-y-3">${lefts.map(item => `<button data-id="${item.id}" data-side="left" class="assoc-btn w-full p-4 rounded-xl border-2 border-slate-200 bg-white text-sm font-medium hover:border-blue-300 transition-all text-left">${item.txt}</button>`).join('')}</div><div class="space-y-3">${rights.map(item => `<button data-id="${item.id}" data-side="right" class="assoc-btn w-full p-4 rounded-xl border-2 border-slate-200 bg-white text-sm font-medium hover:border-blue-300 transition-all text-left">${item.txt}</button>`).join('')}</div></div><p class="text-center text-slate-400 text-sm mt-4">Toque nos pares correspondentes</p>`; 
+        }
+        function renderOrd(q) { 
+            const shuffled = q.items.map((txt, i) => ({txt, originalIdx: i})).sort(() => Math.random() - 0.5);
+            return `<div id="ord-container" class="space-y-2">${shuffled.map(item => `<div data-orig="${item.originalIdx}" class="ord-item p-4 rounded-xl bg-white border-2 border-slate-200 shadow-sm flex items-center gap-4 cursor-pointer hover:border-blue-400"><div class="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 number-badge"></div><span class="font-medium">${item.txt}</span></div>`).join('')}</div><div class="mt-6 flex justify-center"><button onclick="checkOrder()" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition-colors">Verificar Ordem</button></div>`; 
+        }
+
+        function handleAnswer(type, input) {
+            const q = sessionQueue[currentQuestionIndex];
+            let isCorrect = (type === 'mcq' || type === 'tf' || type === 'gap') && (input === q.correct);
+            showFeedback(isCorrect, q);
+        }
+
+        let selectedLeft = null;
+        let selectedRight = null;
+        let matchesFound = 0;
+        function initAssocLogic(q) {
+            const btns = document.querySelectorAll('.assoc-btn'); matchesFound = 0; selectedLeft = null; selectedRight = null;
+            btns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const side = btn.dataset.side;
+                    document.querySelectorAll(`.assoc-btn[data-side="${side}"]`).forEach(b => b.classList.remove('border-blue-500', 'bg-blue-50'));
+                    btn.classList.add('border-blue-500', 'bg-blue-50');
+                    if (side === 'left') selectedLeft = btn; else selectedRight = btn;
+                    if (selectedLeft && selectedRight) {
+                        if (selectedLeft.dataset.id === selectedRight.dataset.id) {
+                            selectedLeft.classList.add('border-green-500', 'bg-green-50', 'opacity-50', 'pointer-events-none');
+                            selectedRight.classList.add('border-green-500', 'bg-green-50', 'opacity-50', 'pointer-events-none');
+                            selectedLeft = null; selectedRight = null; matchesFound++;
+                            if (matchesFound === q.pairs.length) showFeedback(true, q);
+                        } else {
+                            const left = selectedLeft; const right = selectedRight;
+                            setTimeout(() => { left.classList.add('border-red-500', 'bg-red-50'); right.classList.add('border-red-500', 'bg-red-50'); }, 100);
+                            setTimeout(() => { left.classList.remove('border-red-500', 'bg-red-50', 'border-blue-500', 'bg-blue-50'); right.classList.remove('border-red-500', 'bg-red-50', 'border-blue-500', 'bg-blue-50'); }, 600);
+                            selectedLeft = null; selectedRight = null;
+                        }
+                    }
+                });
+            });
+        }
+
+        let orderSelection = [];
+        function initOrdLogic(q) {
+            orderSelection = []; const items = document.querySelectorAll('.ord-item');
+            items.forEach(item => {
+                item.addEventListener('click', () => {
+                    if (orderSelection.includes(item)) {
+                        orderSelection = orderSelection.filter(i => i !== item);
+                        item.classList.remove('border-blue-500', 'bg-blue-50');
+                        item.querySelector('.number-badge').innerText = ''; item.querySelector('.number-badge').classList.remove('bg-blue-600', 'text-white');
+                        orderSelection.forEach((el, idx) => el.querySelector('.number-badge').innerText = idx + 1);
+                    } else {
+                        orderSelection.push(item);
+                        item.classList.add('border-blue-500', 'bg-blue-50');
+                        item.querySelector('.number-badge').innerText = orderSelection.length; item.querySelector('.number-badge').classList.add('bg-blue-600', 'text-white');
+                    }
+                });
+            });
+        }
+        function checkOrder() {
+            const q = sessionQueue[currentQuestionIndex];
+            const currentOrder = orderSelection.map(el => parseInt(el.dataset.orig));
+            if (currentOrder.length !== q.items.length) return;
+            showFeedback(JSON.stringify(currentOrder) === JSON.stringify(q.correctOrder), q);
+        }
+
+        function showFeedback(isCorrect, q) {
+            const sheet = document.getElementById('feedback-sheet'); const icon = document.getElementById('feedback-icon'); const title = document.getElementById('feedback-title'); const text = document.getElementById('feedback-text'); const explanation = document.getElementById('owl-explanation'); const btn = document.getElementById('next-btn');
+            sheet.classList.remove('translate-y-full');
+            if (isCorrect) {
+                title.innerText = "Excelente!"; title.className = 'font-bold text-lg mb-1 text-green-700'; text.innerText = "Você acertou em cheio.";
+                icon.innerHTML = '<i class="ph-fill ph-check"></i>'; icon.className = "hidden md:flex h-12 w-12 rounded-full items-center justify-center text-2xl shrink-0 bg-green-100 text-green-600";
+                btn.className = "h-12 px-8 rounded-xl font-bold text-white shadow-lg transition-transform active:scale-95 bg-green-600 hover:bg-green-700";
+            } else {
+                sessionQueue.push(q);
+                title.innerText = "Solução Correta:"; title.className = 'font-bold text-lg mb-1 text-red-700';
+                let correctTxt = ""; if (q.type === 'mcq') correctTxt = `Resposta: ${q.options[q.correct]}`; else if (q.type === 'gap') correctTxt = `Resposta: ${q.correct}`; else if (q.type === 'tf') correctTxt = `Resposta: ${q.correct ? 'Verdadeiro' : 'Falso'}`; else correctTxt = "Veja a explicação abaixo.";
+                text.innerHTML = correctTxt; icon.innerHTML = '<i class="ph-fill ph-x"></i>'; icon.className = "hidden md:flex h-12 w-12 rounded-full items-center justify-center text-2xl shrink-0 bg-red-100 text-red-600";
+                btn.className = "h-12 px-8 rounded-xl font-bold text-white shadow-lg transition-transform active:scale-95 bg-slate-800 hover:bg-slate-900";
+            }
+            explanation.innerText = q.feedback;
+            btn.onclick = () => { sheet.classList.add('translate-y-full'); setTimeout(() => { currentQuestionIndex++; renderSession(); }, 300); };
+        }
+
+        function renderCompletion() {
+            const container = document.getElementById('app-container');
+            if (currentModuleId !== 'mixed') { const mod = modules.find(m => m.id === currentModuleId); if (mod) mod.mastery = Math.min(mod.mastery + 20, 100); }
+            container.innerHTML = `<div class="h-full flex flex-col items-center justify-center p-6 slide-enter text-center"><div class="h-32 w-32 bg-yellow-400 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-yellow-200"><i class="ph-fill ph-trophy text-6xl text-white"></i></div><h2 class="text-3xl font-bold text-slate-900 mb-2">Sessão Concluída!</h2><p class="text-slate-500 mb-8">Você está um passo mais perto de decolar.</p><button onclick="renderDashboard()" class="bg-slate-900 text-white px-10 py-4 rounded-xl font-bold shadow-xl hover:bg-slate-800 transition-all transform hover:scale-105">Voltar ao Hangar</button></div>`;
+        }
+        function renderReviewMode() { alert("Modo Revisão Rápida: Em breve!"); }
+        function shuffleArray(array) { return [...array].sort(() => Math.random() - 0.5); }
+        init();
+    </script>
+</body>
+</html>
