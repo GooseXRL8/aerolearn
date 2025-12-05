@@ -183,9 +183,10 @@
 
     <!-- Logic -->
     <script>
-        // --- GEMINI API CONFIG ---
-        const apiKey = GEMINI_API_KEY; // Set by environment
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+     // --- GEMINI API CONFIG (MODIFICADO) ---
+        // Não precisamos mais da apiKey aqui no front
+        // Apontamos para nossa rota interna criada no passo 1
+        const API_URL = '/api/gemini'; 
 
         async function callGemini(prompt, systemInstruction = "") {
             try {
@@ -193,6 +194,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        // Mantemos a estrutura que a API do Google espera
                         contents: [{ parts: [{ text: prompt }] }],
                         systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined
                     })
@@ -200,10 +202,12 @@
 
                 if (!response.ok) throw new Error(`API Error: ${response.status}`);
                 const data = await response.json();
+                
+                // O retorno da nossa API proxy é igual ao do Google
                 return data.candidates[0].content.parts[0].text;
             } catch (error) {
                 console.error("Gemini Error:", error);
-                return "Desculpe, o sistema de comunicação com a IA está temporariamente indisponível. Tente novamente em alguns instantes.";
+                return "Desculpe, o sistema de comunicação com a IA está temporariamente indisponível.";
             }
         }
 
@@ -725,5 +729,6 @@
 </body>
 
 </html>
+
 
 
