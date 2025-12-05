@@ -184,7 +184,7 @@
     <!-- Logic -->
     <script>
         // --- GEMINI API CONFIG ---
-        const apiKey = "AIzaSyBq9UEgfOEpjBi0kjrtDIqfyVkuTzKGq6g"; // Set by environment
+        const apiKey = GEMINI_API_KEY; // Set by environment
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
 
         async function callGemini(prompt, systemInstruction = "") {
@@ -725,4 +725,5 @@
 </body>
 
 </html>
+
 
